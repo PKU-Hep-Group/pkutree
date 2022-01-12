@@ -28,15 +28,19 @@ class obj_sel(ntuplize):
         self.isdata = isdata
 
     def run(self):
-        events = NanoEventsFactory.from_root(self.fin, schemaclass=NanoAODSchema).events()
+        events = NanoEventsFactory.from_root(self.input, schemaclass=NanoAODSchema).events()
 
+        # count nevents
+        npos = ak.sum(events.Generator.weight > 0)
+        nneg = ak.sum(events.Generator.weight < 0)
+        ntot = len(events.Generator.weight)
         # good pv
         sel_pv = events.PV.npvsGood > 0
         events = events.mask[sel_pv]
 
         ############
         # muons
-        start_time = fc.count_time("Muon selection")
+        start_time = fc.cout("start",info="Muon selection")
 
         muons = events.Muon
         sel_mu_1 = (muons.mediumId) & (muons.pt > 15)  & (abs(muons.eta) < 2.4)
@@ -54,11 +58,11 @@ class obj_sel(ntuplize):
         good_muons['newpt'] , good_muons['newpt_up'] , good_muons['newpt_down'] = fc.apply_rochester_correction(good_muons)
         # Dress the muons by FSR Photons
 
-        fc.count_time("Muon selection",start_time,False)
+        fc.cout("end",info="Muon selection",start_time=start_time)
 
         ############
         # electrons
-        start_time = fc.count_time("Electron selection")
+        start_time = fc.cout("start",info="Electron selection")
 
         eles = events.Electron
         good_ele_mask = (eles.pt > 20) & (abs(eles.eta + eles.deltaEtaSC) < 2.5) & (eles.mvaFall17V2Iso_WP90)
@@ -67,11 +71,11 @@ class obj_sel(ntuplize):
 
         events = events.mask[sel_no_ele]
 
-        fc.count_time("Electron selection",start_time,False)
+        fc.cout("end",info="Electron selection",start_time=start_time)
 
         ############
         # jets
-        start_time = fc.count_time("Jet selection")
+        start_time = fc.cout("start", info="Jet selection")
 
         jets = events.Jet
         # jet cleaned w.r.t. muons
@@ -84,7 +88,7 @@ class obj_sel(ntuplize):
         good_jets = jets[good_jet_mask]
         events = events.mask[sel_ngood_jet]
 
-        fc.count_time("Jet selection",start_time,False)
+        fc.cout("end",info="Jet selection",start_time=start_time)
 
         ############
         # bjets 
@@ -96,7 +100,7 @@ class obj_sel(ntuplize):
 
         ############
         # store root file
-        start_time = fc.count_time("Snapshot")
+        start_time = fc.cout("start", info="Snapshot")
 
         # reduce the events
         total_sel = ak.fill_none(events.run!=None, False)
@@ -113,22 +117,34 @@ class obj_sel(ntuplize):
         good_jets['muonIdxG'] = ak.count(good_jets.muonIdxG,axis=2)
         good_jets['electronIdxG'] = ak.count(good_jets.electronIdxG,axis=2)
 
-
-        with up.recreate("new_test.root", compression=None) as fout:
-            fout['Events'] = {
-                'basic': {
-                    'run': events.run,
-                    'luminosityBlock': events.luminosityBlock,
-                    'event': events.event,
-                },
-                'Muon': good_muons,
-                'Jet': good_jets,
-                'MET': events.MET,
-                'PuppiMET': events.PuppiMET,
-                'HLT': trig_dict,
+        # check passed events
+        npassed = len(events.run)
+        
+        fc.cout("summary", info=npassed)
+        with up.recreate(self.output, compression=None) as fout:
+            if npassed > 0:
+                fout['Events'] = {
+                    'basic': {
+                        'run': events.run,
+                        'luminosityBlock': events.luminosityBlock,
+                        'event': events.event,
+                    },
+                    'Muon': good_muons,
+                    'Jet': good_jets,
+                    'MET': events.MET,
+                    'PuppiMET': events.PuppiMET,
+                    'HLT': trig_dict,
+                }
+            else:
+                fc.cout('warning', info="no 'Events' tree")
+            fout['nEvents'] = {
+                'count': {
+                    'npos': np.array([npos],dtype=np.int32),
+                    'nneg': np.array([nneg],dtype=np.int32),
+                    'ntot': np.array([ntot],dtype=np.int32),
+                }
             }
-
-        fc.count_time("Snapshot",start_time,False)
+        fc.cout("end", info="Snapshot", start_time=start_time)
 
 if __name__ == '__main__':
-    print("[test] this is hmm")
+    fc.cout("this is hmm")

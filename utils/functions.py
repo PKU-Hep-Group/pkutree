@@ -14,17 +14,46 @@ import numpy as np
 import time
 
 
-def count_time(step_name, initial_time = None, is_start = True):
-    if is_start:
-        print("[START]\t ",f">>> {step_name} <<<")
-        return time.time()
-    else:
-        if initial_time == None:
-            print("*ERROR*","please input the initial_time, now exit")
-            exit(0)
+# [   END   ]
+# []
+def cout(mode = "test", **kwargs):
+
+    if mode == "start":
+        if 'info' in kwargs.keys():
+            print("[  START  ]\t ",f">>> {kwargs['info']} <<<")
         else:
-            print("[ END ]\t ",f">>> {step_name} <<<","\t cost time:",np.round(time.time()-initial_time,2),"s")
-            return 
+            print("[  START  ]\t ")
+        return time.time()
+    elif mode == "end":
+        if 'info' in kwargs.keys() and 'start_time' in kwargs.keys():
+            print("[   END   ]\t ",f">>> {kwargs['info']} <<<","\t cost time:",np.round(time.time()-kwargs['start_time'],2),"s")
+        elif 'info' in kwargs.keys():
+            print("[   END   ]\t ",f">>> {kwargs['info']} <<<")
+        elif 'stime' in kwargs.keys():
+            print("[   END   ]\t ","\t cost time:",np.round(time.time()-kwargs['start_time'],2),"s")
+        else:
+            print("[   END   ]\t ")
+        return 
+    elif mode == "summary":
+        if 'info' in kwargs.keys():
+            print("[ SUMMARY ]\t # passed events:", kwargs['info'])
+        else:
+            print("[ SUMMARY ]\t xxxxxx")
+        return 
+    elif mode == "warning":        
+        if 'info' in kwargs.keys():
+            print("[ WARNING ]\t info:", kwargs['info'])
+        else:
+            print("[ WARNING ]\t xxxxxx")
+        return 
+    elif mode == "error":        
+        if 'info' in kwargs.keys():
+            print("[  ERROR  ]\t info:", kwargs['info'])
+        else:
+            print("[  ERROR  ]\t xxxxxx")
+        return 
+    else:
+        print("[   OUT   ]\t", mode)
 
 
 # https://gitlab.cern.ch/akhukhun/roccor
