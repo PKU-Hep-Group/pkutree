@@ -1,0 +1,29 @@
+vhjj:
+  nanov9:  
+    mc:
+      2018: mc_2018_vhjj_nanov9.yaml
+    data:
+      2018: data_2018_vhjj_nanov9.yaml
+ssww:
+  nanov7:
+    mc:
+      2018: mc_2018_ssww_nanov7.yaml
+    data:
+      2018: data_2018_ssww_nanov7.yaml
+hmm:
+  nanov9:
+    mc:
+      2018: mc_2018_hmm_nanov9.yaml
+    data:
+      2018: data_2018_hmm_nanov9.yaml
+      2017: data_2017_hmm_nanov9.yaml
+      2016: data_2016_hmm_nanov9.yaml
+  nanov7:
+    mc:
+      2018: mc_2018_hmm_nanov7.yaml
+      2017: mc_2017_hmm_nanov7.yaml
+      2016: mc_2016_hmm_nanov7.yaml
+    data:
+      2018: data_2018_hmm_nanov7.yaml
+      2017: data_2017_hmm_nanov7.yaml
+      2016: data_2016_hmm_nanov7.yaml

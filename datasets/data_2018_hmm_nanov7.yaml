@@ -1,0 +1,9 @@
+# 2018: https://cmsweb.cern.ch/das/request?view=list&limit=50&instance=prod%2Fglobal&input=dataset%3D+%2FMuonEG%2FRun2018*-02Apr2020*%2FNANOAOD
+SingleMuon_Run2018A:
+  dataset: /SingleMuon/Run2018A-02Apr2020-v1/NANOAOD
+SingleMuon_Run2018B:
+  dataset: /SingleMuon/Run2018B-02Apr2020-v1/NANOAOD
+SingleMuon_Run2018C:
+  dataset: /SingleMuon/Run2018C-02Apr2020-v1/NANOAOD
+SingleMuon_Run2018D:
+  dataset: /SingleMuon/Run2018D-02Apr2020-v1/NANOAOD
