@@ -16,45 +16,46 @@ import time
 
 # [   END   ]
 # []
-def cout(mode = "test", **kwargs):
+def cout(mode="test", info=None, **kwargs):
+
+    if len(kwargs) == 0:
+        newargs = ""
+    else:
+        newargs = kwargs
 
     if mode == "start":
-        if 'info' in kwargs.keys():
-            print("[  START  ]\t ",f">>> {kwargs['info']} <<<")
-        else:
-            print("[  START  ]\t ")
+        try:
+            print("[  START  ]",f">>> {info} <<<" if info != None else "","entries:", kwargs['entries'])
+        except:
+            print("[  START  ]",f">>> {info} <<<" if info != None else "", newargs)
         return time.time()
     elif mode == "end":
-        if 'info' in kwargs.keys() and 'start_time' in kwargs.keys():
-            print("[   END   ]\t ",f">>> {kwargs['info']} <<<","\t cost time:",np.round(time.time()-kwargs['start_time'],2),"s")
-        elif 'info' in kwargs.keys():
-            print("[   END   ]\t ",f">>> {kwargs['info']} <<<")
-        elif 'stime' in kwargs.keys():
-            print("[   END   ]\t ","\t cost time:",np.round(time.time()-kwargs['start_time'],2),"s")
-        else:
-            print("[   END   ]\t ")
-        return 
-    elif mode == "summary":
-        if 'info' in kwargs.keys():
-            print("[ SUMMARY ]\t # passed events:", kwargs['info'])
-        else:
-            print("[ SUMMARY ]\t xxxxxx")
-        return 
-    elif mode == "warning":        
-        if 'info' in kwargs.keys():
-            print("[ WARNING ]\t info:", kwargs['info'])
-        else:
-            print("[ WARNING ]\t xxxxxx")
-        return 
-    elif mode == "error":        
-        if 'info' in kwargs.keys():
-            print("[  ERROR  ]\t info:", kwargs['info'])
-        else:
-            print("[  ERROR  ]\t xxxxxx")
-        return 
-    else:
-        print("[   OUT   ]\t", mode)
+        if "entries" in kwargs.keys():
+            try:
+                print("[   END   ]",f">>> {info} <<<" if info != None else "",\
+                    "entries:",kwargs['entries'],", cost time:",np.round(time.time()-kwargs['start_time'],2),"s")
+                return
+            except:
+                pass
+        if "start_time" in kwargs.keys():
+            try:
+                print("[   END   ]",f">>> {info} <<<" if info != None else "","cost time:",np.round(time.time()-kwargs['start_time'],2),"s")
+                return
+            except:
+                pass
+        print("[   END   ]",f">>> {info} <<<" if info != None else "", newargs)
+        return
 
+    elif mode == "summary":
+        print("[ SUMMARY ]",f">>> {info} <<<" if info != None else "", newargs)
+    elif mode == "warning":        
+        print("[ WARNING ]",f">>> {info} <<<" if info != None else "", newargs)
+    elif mode == "error":        
+        print("[  ERROR  ]",f">>> {info} <<<" if info != None else "", newargs)
+    else:
+        print("[   OUT   ]", mode)
+    
+    return
 
 # https://gitlab.cern.ch/akhukhun/roccor
 # https://github.com/CoffeaTeam/coffea/blob/master/coffea/lookup_tools/rochester_lookup.py

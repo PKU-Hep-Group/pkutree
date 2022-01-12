@@ -40,7 +40,7 @@ class obj_sel(ntuplize):
 
         ############
         # muons
-        start_time = fc.cout("start",info="Muon selection")
+        stime = fc.cout("start","Muon selection",entries=ak.sum((events.run!=None)))
 
         muons = events.Muon
         sel_mu_1 = (muons.mediumId) & (muons.pt > 15)  & (abs(muons.eta) < 2.4)
@@ -58,11 +58,11 @@ class obj_sel(ntuplize):
         good_muons['newpt'] , good_muons['newpt_up'] , good_muons['newpt_down'] = fc.apply_rochester_correction(good_muons)
         # Dress the muons by FSR Photons
 
-        fc.cout("end",info="Muon selection",start_time=start_time)
+        fc.cout("end","Muon selection",start_time=stime,entries=ak.sum(events.run!=None))
 
         ############
         # electrons
-        start_time = fc.cout("start",info="Electron selection")
+        stime=fc.cout("start","Electron selection")
 
         eles = events.Electron
         good_ele_mask = (eles.pt > 20) & (abs(eles.eta + eles.deltaEtaSC) < 2.5) & (eles.mvaFall17V2Iso_WP90)
@@ -71,11 +71,11 @@ class obj_sel(ntuplize):
 
         events = events.mask[sel_no_ele]
 
-        fc.cout("end",info="Electron selection",start_time=start_time)
+        fc.cout("end","Electron selection",start_time=stime,entries=ak.sum(events.run!=None))
 
         ############
         # jets
-        start_time = fc.cout("start", info="Jet selection")
+        stime = fc.cout("start", "Jet selection")
 
         jets = events.Jet
         # jet cleaned w.r.t. muons
@@ -88,7 +88,7 @@ class obj_sel(ntuplize):
         good_jets = jets[good_jet_mask]
         events = events.mask[sel_ngood_jet]
 
-        fc.cout("end",info="Jet selection",start_time=start_time)
+        fc.cout("end","Jet selection",entries=ak.sum(events.run!=None),start_time=stime)
 
         ############
         # bjets 
@@ -100,7 +100,7 @@ class obj_sel(ntuplize):
 
         ############
         # store root file
-        start_time = fc.cout("start", info="Snapshot")
+        stime = fc.cout("start", "Snapshot")
 
         # reduce the events
         total_sel = ak.fill_none(events.run!=None, False)
@@ -120,7 +120,7 @@ class obj_sel(ntuplize):
         # check passed events
         npassed = len(events.run)
         
-        fc.cout("summary", info=npassed)
+        fc.cout("summary", f"# passed:{npassed}")
         with up.recreate(self.output, compression=None) as fout:
             if npassed > 0:
                 fout['Events'] = {
@@ -136,7 +136,7 @@ class obj_sel(ntuplize):
                     'HLT': trig_dict,
                 }
             else:
-                fc.cout('warning', info="no 'Events' tree")
+                fc.cout('warning', "no 'Events' tree")
             fout['nEvents'] = {
                 'count': {
                     'npos': np.array([npos],dtype=np.int32),
@@ -144,7 +144,7 @@ class obj_sel(ntuplize):
                     'ntot': np.array([ntot],dtype=np.int32),
                 }
             }
-        fc.cout("end", info="Snapshot", start_time=start_time)
+        fc.cout("end", "Snapshot", start_time=stime)
 
 if __name__ == '__main__':
     fc.cout("this is hmm")
