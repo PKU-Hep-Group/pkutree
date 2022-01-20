@@ -1,2 +1,3 @@
-job_dir: /data/pubfs/xiaoj/download/jobs/
-out_dir: /data/pubfs/xiaoj/download/datasets/
+job_dir: /data/pubfs/xiaoj/hmm/jobs/
+in_dir: /data/pubfs/xiaoj/download/datasets/
+out_dir: /data/pubfs/xiaoj/hmm/ntuple/
