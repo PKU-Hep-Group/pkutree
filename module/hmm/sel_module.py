@@ -10,6 +10,7 @@ from coffea.jetmet_tools import JECStack, CorrectedJetsFactory, CorrectedMETFact
 from coffea.btag_tools.btagscalefactor import BTagScaleFactor
 ak.behavior.update(candidate.behavior)
 from template.temp_class import ntuplize
+from coffea import processor
 import utils.functions as fc
 import numpy as np
 import argparse
@@ -23,18 +24,30 @@ parser.add_argument('-d','--data', help='is data or mc, default: False', action=
 parser.add_argument('-s','--step', help='which step', default='obj_sel')
 args = parser.parse_args()
 
-class obj_sel(ntuplize):
+class obj_sel(processor.ProcessorABC):
     """
     Object selection
     """
 
-    def __init__(self, fin=None, fout=None, year='2018', data=False):
-        super().__init__(fin,fout)
+    def __init__(self, output, subdir='obj_sel', year='2018', data=False):
+        self._accumulator = processor.dict_accumulator(
+            {
+                "sumw": processor.defaultdict_accumulator(float),
+            }
+        )
+        self.output = output
+        self.subdir = subdir
         self.year = year
         self.data = data
 
-    def run(self):
-        events = NanoEventsFactory.from_root(self.input, schemaclass=NanoAODSchema).events()
+    @property
+    def accumulator(self):
+        return self._accumulator
+
+    def process(self, events):
+        output = self.accumulator.identity()
+        dataset = events.metadata['dataset']
+        output["sumw"][dataset] += len(events)
 
         if not self.data:
             # count nevents
@@ -264,6 +277,10 @@ class obj_sel(ntuplize):
                 }
             }
         fc.cout("end", "Snapshot", start_time=stime)
+        return output
+
+    def postprocess(self, accumulator):
+        return accumulator
 
 if __name__ == '__main__':
     if args.step == "obj_sel":

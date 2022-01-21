@@ -138,6 +138,8 @@ def get_sh(idx, fname, file, sample, job_path, out_path, cfg):
     # print("===> get_sh")
     file_content = "#!/bin/bash\n"
     is_data = "-d" if cfg['sample_type'] == "data" else ""
+    file_content += """
+    """
     file_content += f"""
 echo ">>> conda initialize >>>"
 source {HOME_PATH}/miniconda3/bin/activate
@@ -146,8 +148,8 @@ echo "<<< conda initialize <<<"
 
 echo ">>> analysing >>>"
 python -m {cfg['step_handle']} -i {file} -o {out_path}/{fname} -y {cfg['year']} {is_data}
-echo "<<< analysing <<< \n"
-    """
+echo "<<< analysing <<<"
+    \n"""
 
     file_content += f"[ $? -eq 0 ] && mv {job_path}/{sample}_{idx}.jid {job_path}/{sample}_{idx}.done\n"
     tmp = open(f"{job_path}/{sample}_{idx}.sh", "w")
