@@ -93,7 +93,6 @@ def start_run(file_dict, cfg):
 def handle_run(cfg, sample=None):
     print("===> submit_command", "year:", cfg['year'], "sample:", sample)
 
-    job_path = f"{cfg['job_dir']}/{cfg['channel']}_{cfg['year']}_{cfg['nano_ver']}_{cfg['step']}/{sample}/"
     # sample dataset name
     sname = cfg['ds_yml'][sample]['dataset']
     if cfg['pre'] == None:
@@ -121,39 +120,18 @@ def handle_run(cfg, sample=None):
             return True
     else:
         os.makedirs(out_path)
-    if not os.path.exists(job_path):
-        os.makedirs(job_path)
 
     file_dict = get_file_info(in_path,sample)
     print("---", "sample:", sample, ", #file:", len(file_dict[sample]))
         
-    results = processor.run_uproot_job(
-        file_dict,
-        treename='Events',
-        processor_instance=sel_module.obj_sel(cfg['out_dir'],year=cfg['year'],data=cfg['data']),
-        executor=processor.futures_executor,
-        executor_args={"schema": BaseSchema, "workers": 4},
-        chunksize=100000,
-        maxchunks=None,
-    )
-
-    _long_queue = []
-    for idx,ifname in enumerate(file_dict):
-        # We write the SUB file for documentation / resubmission, but initial submission will be done in one go below
-        get_sub(job_path, sample, cfg['jflavour'],idx)
-        get_sh(idx, file_dict[ifname], sample, job_path, out_path, cfg)
-        _long_queue.append(f"{sample}_{idx}")
-    if cfg['dryrun']:
-        pass
-    else:
-        get_sub(job_path, sample, cfg['jflavour'], long_queue=_long_queue)  # dryrun will just generate submit files, but not run
+    start_run(file_dict, cfg)
     print("<=== submit_command END :)")
     return True
 
 
 def to_skim(year, sample_type):
     print("===> to_submit:", "year:", year, "sample_type:", sample_type)
-    cfg = sh.get_cfg(args)
+    cfg = get_cfg(args)
 
     if cfg['sample']:
         for isp in cfg['sample']:
