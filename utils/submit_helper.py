@@ -7,7 +7,7 @@ import sys
 import random
 import yaml
 from pathlib import Path
-
+import shutil
 
 def get_cfg(args):
     cfg = {
@@ -133,7 +133,7 @@ def get_sub(job_path, sample, job_flavour="testmatch",idx=0,long_queue=None):
     return
 
 
-def get_sh(idx, fname, file, sample, job_path, out_path, cfg):
+def get_sh(idx, file, sample, job_path, out_path, cfg):
     HOME_PATH = os.environ['HOME']
     # print("===> get_sh")
     file_content = "#!/bin/bash\n"
@@ -147,7 +147,7 @@ conda activate xcu
 echo "<<< conda initialize <<<"
 
 echo ">>> analysing >>>"
-python -m {cfg['step_handle']} -i {file} -o {out_path}/{fname} -y {cfg['year']} {is_data}
+python -m {cfg['step_handle']} -i {file} -o {out_path} -y {cfg['year']} -s {cfg['step']} -sp {sample} {is_data}
 echo "<<< analysing <<<"
     \n"""
 
@@ -182,30 +182,27 @@ def submit_command(cfg, sample=None):
     if not os.path.exists(in_path):
         print("xxx","Invalid input path:",in_path, "please check!!!")
         exit(0)
+    if os.path.exists(out_path):
+        if cfg['redo']:
+            shutil.rmtree(out_path)
+            print(f"[  Redo  ] {sample} path: {out_path} is removed!!!")
+        else:
+            print(f"[  Out   ] {sample} path: {out_path} is already there, skip!!!")
+            return True
+    else:
+        os.makedirs(out_path)
+    if not os.path.exists(job_path):
+        os.makedirs(job_path)
 
     file_dict = get_file_info(in_path)
     print("---", "sample:", sample, ", #file:", len(file_dict))
-    if not os.path.exists(job_path):
-        os.makedirs(job_path)
-    if not os.path.exists(out_path):
-        os.makedirs(out_path)
+        
     _long_queue = []
     for idx,ifname in enumerate(file_dict):
-        out_file_name = f"{out_path}/{ifname}"
-        to_do_submit = True
-        if os.path.exists(out_file_name):
-            if cfg['redo']:
-                to_do_submit = True
-            else:
-                print("--- The job done already, check:", out_file_name)
-                to_do_submit = False
-        else:
-            pass
-        if to_do_submit:
-            # We write the SUB file for documentation / resubmission, but initial submission will be done in one go below
-            get_sub(job_path, sample, cfg['jflavour'],idx)
-            get_sh(idx, ifname, file_dict[ifname], sample, job_path, out_path, cfg)
-            _long_queue.append(f"{sample}_{idx}")
+        # We write the SUB file for documentation / resubmission, but initial submission will be done in one go below
+        get_sub(job_path, sample, cfg['jflavour'],idx)
+        get_sh(idx, file_dict[ifname], sample, job_path, out_path, cfg)
+        _long_queue.append(f"{sample}_{idx}")
     if cfg['dryrun']:
         pass
     else:

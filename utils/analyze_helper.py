@@ -36,46 +36,6 @@ def get_lumi_mask(events, year="2018"):
     return lumi_mask
 
 
-def cout(mode="test", info=None, **kwargs):
-    if len(kwargs) == 0:
-        newargs = ""
-    else:
-        newargs = kwargs
-
-    if mode == "start":
-        try:
-            print("[  START  ]",f">>> {info} <<<" if info != None else "","entries:", kwargs['entries'])
-        except:
-            print("[  START  ]",f">>> {info} <<<" if info != None else "", newargs)
-        return time.time()
-    elif mode == "end":
-        if "entries" in kwargs.keys():
-            try:
-                print("[   END   ]",f">>> {info} <<<" if info != None else "",\
-                    "entries:",kwargs['entries'],", cost time:",np.round(time.time()-kwargs['start_time'],2),"s")
-                return
-            except:
-                pass
-        if "start_time" in kwargs.keys():
-            try:
-                print("[   END   ]",f">>> {info} <<<" if info != None else "","cost time:",np.round(time.time()-kwargs['start_time'],2),"s")
-                return
-            except:
-                pass
-        print("[   END   ]",f">>> {info} <<<" if info != None else "", newargs)
-        return
-
-    elif mode == "summary":
-        print("[ SUMMARY ]",f">>> {info} <<<" if info != None else "", newargs)
-    elif mode == "warning":        
-        print("[ WARNING ]",f">>> {info} <<<" if info != None else "", newargs)
-    elif mode == "error":        
-        print("[  ERROR  ]",f">>> {info} <<<" if info != None else "", newargs)
-    else:
-        print("[   OUT   ]", mode)
-    
-    return
-
 # https://gitlab.cern.ch/akhukhun/roccor
 # https://github.com/CoffeaTeam/coffea/blob/master/coffea/lookup_tools/rochester_lookup.py
 # https://github.com/TopEFT/topcoffea/blob/master/topcoffea/modules/corrections.py#L359
@@ -112,28 +72,28 @@ def apply_rochester_correction(mu, data=False, year='2018'):
 
 
 def is_clean(obj_A, obj_B, drmin=0.4):
-   ## Method 1
-   # pair_obj = ak.cartesian([obj_A, obj_B],nested=True)
-   # obj1, obj2 = ak.unzip(pair_obj)
-   # dr_jm = obj1.delta_r(obj2)
-   # min_dr_jm = ak.min(dr_jm,axis=2)
-   # mask = min_dr_jm > drmin
-   
-   ## Method 2
-   objB_near, objB_dr = obj_A.nearest(obj_B, return_metric=True)
-   mask = ak.fill_none(objB_dr > drmin, True) # I guess to use True is because if there are no objB, all the objA are clean
-   return (mask)
+    ## Method 1
+    # pair_obj = ak.cartesian([obj_A, obj_B],nested=True)
+    # obj1, obj2 = ak.unzip(pair_obj)
+    # dr_jm = obj1.delta_r(obj2)
+    # min_dr_jm = ak.min(dr_jm,axis=2)
+    # mask = min_dr_jm > drmin
+    
+    ## Method 2
+    objB_near, objB_dr = obj_A.nearest(obj_B, return_metric=True)
+    mask = ak.fill_none(objB_dr > drmin, True) # I guess to use True is because if there are no objB, all the objA are clean
+    return (mask)
 
 
 def get_btagsf(flavor, eta, pt, sys='nominal', year='2018'):
-  # Efficiencies and SFs for UL only available for 2016APV, 2017 and 2018
-  # light flavor SFs and unc. missed for 2016APV
-  if   (year == '2016' or year == '2016APV'): SFevaluatorBtag = BTagScaleFactor("data/btagSF/DeepFlav_2016.csv","MEDIUM") 
-  elif year == '2017': SFevaluatorBtag = BTagScaleFactor("data/btagSF/UL/DeepJet_UL17.csv","MEDIUM")
-  elif year == '2018': SFevaluatorBtag = BTagScaleFactor(abs_path("btagSF/2018/DeepJet_102XSF_V2.btag.csv.gz"),"MEDIUM")
-  else: raise Exception(f"Error: Unknown year \"{year}\".")
+    # Efficiencies and SFs for UL only available for 2016APV, 2017 and 2018
+    # light flavor SFs and unc. missed for 2016APV
+    if   (year == '2016' or year == '2016APV'): SFevaluatorBtag = BTagScaleFactor("data/btagSF/DeepFlav_2016.csv","MEDIUM") 
+    elif year == '2017': SFevaluatorBtag = BTagScaleFactor("data/btagSF/UL/DeepJet_UL17.csv","MEDIUM")
+    elif year == '2018': SFevaluatorBtag = BTagScaleFactor(abs_path("btagSF/2018/DeepJet_102XSF_V2.btag.csv.gz"),"MEDIUM")
+    else: raise Exception(f"Error: Unknown year \"{year}\".")
 
-  return SFevaluatorBtag.eval("central",flavor,eta,pt), SFevaluatorBtag.eval("up",flavor,eta,pt), SFevaluatorBtag.eval("down",flavor,eta,pt)
+    return SFevaluatorBtag.eval("central",flavor,eta,pt), SFevaluatorBtag.eval("up",flavor,eta,pt), SFevaluatorBtag.eval("down",flavor,eta,pt)
 
 
 ### JES JER

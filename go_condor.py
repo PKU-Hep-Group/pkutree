@@ -1,8 +1,6 @@
 import argparse
-import utils.functions as func
 import yaml
 import utils.submit_helper as sh
-import utils.functions as fc
 
 parser = argparse.ArgumentParser(description='manual to this script')
 parser.add_argument('mode', help='which mode: look, download, status', choices=('look', 'skim', 'status'), default='status')
@@ -11,7 +9,7 @@ parser.add_argument('-v','--version', help='which nanoAOD version: nanov7, nanov
 parser.add_argument('-c', '--channel', help='which channel: vhjj, ssww, your own channel, ...', default='vhjj')
 parser.add_argument('-y', '--year', help='which year to run: 2016, 2017, 2018', default='2018')
 parser.add_argument('-f', '--flavour', help='job flavour: espresso, longlunch, workday, ...', default='testmatch')
-parser.add_argument('-r', '--redo', help='redo the job, default: True', action='store_false', default=True)
+parser.add_argument('-r', '--redo', help='redo the job, default: False', action='store_true', default=False)
 parser.add_argument('--pre', help='the name of the pre-step', default=None)
 parser.add_argument('--step', help='which step to run', default='obj_sel')
 parser.add_argument('--dryrun', help='only generate submit files, but not run', action='store_true', default=False)
@@ -56,7 +54,7 @@ def to_status(year, sample_type):
 
 
 def have_a_look(ds):
-    use_gfal, file_dict = func.get_file_info(ds)
+    use_gfal, file_dict = sh.get_file_info(ds)
     for ifile, ifname in enumerate(file_dict):
         print("===> File index:", ifile, ", file name:", ifname)
         print("<=== Available path:",file_dict[ifname])
