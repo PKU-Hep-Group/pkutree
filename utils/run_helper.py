@@ -71,7 +71,7 @@ def get_cfg(args):
       'nworker' : %s,
     'chunksize' : %s,
        'schema' : %s,
-      'executor': %s,
+     'executor' : %s,
 --------------------------------
         """,
         args.year,

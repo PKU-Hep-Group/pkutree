@@ -1,7 +1,9 @@
+!data
+
 __pycache__
 *.egg-info
 
-*.root
+./*root
 
 .vscode
 

@@ -6,11 +6,13 @@ import data
 import logging
 import logging.config
 import yaml
-
+from pathlib import Path
 # The absolute path
 # This function takes as input any path (relativate path to pkutree/), and returns the absolute path
 def abs_path(path_in_repo):
-    return os.path.join(f"{data.__path__[0]}/..", path_in_repo)
+    data_path = Path(data.__path__[0])
+    base_path = str(data_path.parent.absolute())
+    return os.path.join(base_path, path_in_repo)
 
 
 def setup_logging(default_path=abs_path('config/logging_cfg.yaml'), default_level=logging.INFO):

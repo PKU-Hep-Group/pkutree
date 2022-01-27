@@ -228,19 +228,19 @@ def get_pusf(nTrueInt, year):
     }
     data_file_dict = {
         '2016': {
-            'down':     hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-66000ub.root'),      
-            'nominal':  hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-69200ub.root'),
-            'up':       hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-72400ub.root'),      
+            'down':     hcom.abs_path('data/pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-66000ub.root'),      
+            'nominal':  hcom.abs_path('data/pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-69200ub.root'),
+            'up':       hcom.abs_path('data/pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-72400ub.root'),      
         },
         '2017': {
-            'down':     hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-66000ub-99bins.root'),      
-            'nominal':  hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root'),
-            'up':       hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-72400ub-99bins.root'),      
+            'down':     hcom.abs_path('data/pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-66000ub-99bins.root'),      
+            'nominal':  hcom.abs_path('data/pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root'),
+            'up':       hcom.abs_path('data/pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-72400ub-99bins.root'),      
         },
         '2018': {
-            'down':     hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-66000ub-99bins.root'),      
-            'nominal':  hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-69200ub-99bins.root'),
-            'up':       hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-72400ub-99bins.root'),      
+            'down':     hcom.abs_path('data/pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-66000ub-99bins.root'),      
+            'nominal':  hcom.abs_path('data/pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-69200ub-99bins.root'),
+            'up':       hcom.abs_path('data/pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-72400ub-99bins.root'),      
         },
     }
     PUfunc = {}
