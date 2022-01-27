@@ -1,0 +1,4 @@
+in_dir: /data/pubfs/xiaoj/download/datasets/
+out_dir: /data/pubfs/xiaoj/hmm/2ntuple/
+# for condor
+job_dir: /data/pubfs/xiaoj/hmm/jobs/
