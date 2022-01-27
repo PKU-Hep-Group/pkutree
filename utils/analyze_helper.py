@@ -11,25 +11,18 @@ from coffea.btag_tools.btagscalefactor import BTagScaleFactor
 from coffea.lumi_tools import LumiMask
 ak.behavior.update(candidate.behavior)
 import numpy as np
-import time
-
+import utils.common_helper as hcom
 import os
 import data
-# The absolute path
-# This function takes as input any path (relativate path to pkutree/data), and returns the absolute path
-def abs_path(path_in_repo):
-    return os.path.join(data.__path__[0], path_in_repo)
 
-# [   END   ]
-# []
 
 def get_lumi_mask(events, year="2018"):
     if year == "2016" or year == "2016APV":
-        golden_json_path = abs_path("goldenJSON/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt")
+        golden_json_path = hcom.abs_path("data/goldenJSON/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt")
     elif year == "2017":
-        golden_json_path = abs_path("goldenJSON/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt")
+        golden_json_path = hcom.abs_path("data/goldenJSON/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt")
     elif year == "2018":
-        golden_json_path = abs_path("goldenJSON/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt")
+        golden_json_path = hcom.abs_path("data/goldenJSON/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt")
     else:
         raise ValueError(f"Error: Unknown year \"{year}\".")
     lumi_mask = LumiMask(golden_json_path)(events.run,events.luminosityBlock)
@@ -40,9 +33,11 @@ def get_lumi_mask(events, year="2018"):
 # https://github.com/CoffeaTeam/coffea/blob/master/coffea/lookup_tools/rochester_lookup.py
 # https://github.com/TopEFT/topcoffea/blob/master/topcoffea/modules/corrections.py#L359
 def apply_rochester_correction(mu, data=False, year='2018'):
+    rochester_data = lookup_tools.txt_converters.convert_rochester_file(hcom.abs_path("data/RoccoR/RoccoR2018.txt"), loaduncs=True)
+ 
     if year=='2016': rochester_data = lookup_tools.txt_converters.convert_rochester_file("data/MuonScale/RoccoR2016.txt", loaduncs=True)
     elif year=='2017': rochester_data = lookup_tools.txt_converters.convert_rochester_file("data/MuonScale/RoccoR2017.txt", loaduncs=True)
-    elif year=='2018': rochester_data = lookup_tools.txt_converters.convert_rochester_file(abs_path("RoccoR/RoccoR2018.txt"), loaduncs=True)
+    elif year=='2018': rochester_data = lookup_tools.txt_converters.convert_rochester_file(hcom.abs_path("data/RoccoR/RoccoR2018.txt"), loaduncs=True)
     rochester = lookup_tools.rochester_lookup.rochester_lookup(rochester_data)
     if not data:
         hasgen = ~np.isnan(ak.fill_none(mu.matched_gen.pt, np.nan))
@@ -90,7 +85,7 @@ def get_btagsf(flavor, eta, pt, sys='nominal', year='2018'):
     # light flavor SFs and unc. missed for 2016APV
     if   (year == '2016' or year == '2016APV'): SFevaluatorBtag = BTagScaleFactor("data/btagSF/DeepFlav_2016.csv","MEDIUM") 
     elif year == '2017': SFevaluatorBtag = BTagScaleFactor("data/btagSF/UL/DeepJet_UL17.csv","MEDIUM")
-    elif year == '2018': SFevaluatorBtag = BTagScaleFactor(abs_path("btagSF/2018/DeepJet_102XSF_V2.btag.csv.gz"),"MEDIUM")
+    elif year == '2018': SFevaluatorBtag = BTagScaleFactor(hcom.abs_path("data/btagSF/2018/DeepJet_102XSF_V2.btag.csv.gz"),"MEDIUM")
     else: raise Exception(f"Error: Unknown year \"{year}\".")
 
     return SFevaluatorBtag.eval("central",flavor,eta,pt), SFevaluatorBtag.eval("up",flavor,eta,pt), SFevaluatorBtag.eval("down",flavor,eta,pt)
@@ -102,37 +97,37 @@ def apply_jet_corrections(year):
     if year=='2016':
         extract.add_weight_sets(
             [
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L1FastJet_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L2Relative_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L3Absolute_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L2L3Residual_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Regrouped_Autumn18_V19_MC_UncertaintySources_AK4PFchs.junc.txt')}",
-                f"* * {abs_path('jer/2018/Autumn18_V7b_MC_PtResolution_AK4PFchs.jr.txt')}",
-                f"* * {abs_path('jer/2018/Autumn18_V7b_MC_SF_AK4PFchs.jersf.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L1FastJet_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L2Relative_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L3Absolute_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L2L3Residual_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Regrouped_Autumn18_V19_MC_UncertaintySources_AK4PFchs.junc.txt')}",
+                f"* * {hcom.abs_path('data/jer/2018/Autumn18_V7b_MC_PtResolution_AK4PFchs.jr.txt')}",
+                f"* * {hcom.abs_path('data/jer/2018/Autumn18_V7b_MC_SF_AK4PFchs.jersf.txt')}",
             ]
         )
     elif year=='2017':
         extract.add_weight_sets(
             [
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L1FastJet_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L2Relative_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L3Absolute_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L2L3Residual_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Regrouped_Autumn18_V19_MC_UncertaintySources_AK4PFchs.junc.txt')}",
-                f"* * {abs_path('jer/2018/Autumn18_V7b_MC_PtResolution_AK4PFchs.jr.txt')}",
-                f"* * {abs_path('jer/2018/Autumn18_V7b_MC_SF_AK4PFchs.jersf.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L1FastJet_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L2Relative_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L3Absolute_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L2L3Residual_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Regrouped_Autumn18_V19_MC_UncertaintySources_AK4PFchs.junc.txt')}",
+                f"* * {hcom.abs_path('data/jer/2018/Autumn18_V7b_MC_PtResolution_AK4PFchs.jr.txt')}",
+                f"* * {hcom.abs_path('data/jer/2018/Autumn18_V7b_MC_SF_AK4PFchs.jersf.txt')}",
             ]
         )
     elif year=='2018':
         extract.add_weight_sets(
             [
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L1FastJet_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L2Relative_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L3Absolute_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Autumn18_V19_MC_L2L3Residual_AK4PFchs.jec.txt')}",
-                f"* * {abs_path('jes/2018/Regrouped_Autumn18_V19_MC_UncertaintySources_AK4PFchs.junc.txt')}",
-                f"* * {abs_path('jer/2018/Autumn18_V7b_MC_PtResolution_AK4PFchs.jr.txt')}",
-                f"* * {abs_path('jer/2018/Autumn18_V7b_MC_SF_AK4PFchs.jersf.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L1FastJet_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L2Relative_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L3Absolute_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Autumn18_V19_MC_L2L3Residual_AK4PFchs.jec.txt')}",
+                f"* * {hcom.abs_path('data/jes/2018/Regrouped_Autumn18_V19_MC_UncertaintySources_AK4PFchs.junc.txt')}",
+                f"* * {hcom.abs_path('data/jer/2018/Autumn18_V7b_MC_PtResolution_AK4PFchs.jr.txt')}",
+                f"* * {hcom.abs_path('data/jer/2018/Autumn18_V7b_MC_SF_AK4PFchs.jersf.txt')}",
             ]
         )
     else:
@@ -227,25 +222,25 @@ def get_pusf(nTrueInt, year):
     ##    https://github.com/CMS-LUMI-POG/PileupTools/
 
     mc_file_dict = {
-        '2016': abs_path('pileup/PreUL13TeV/pileup_2016BF.root'),
-        '2017': abs_path('pileup/PreUL13TeV/pileup_2017_shifts.root'),
-        '2018': abs_path('pileup/PreUL13TeV/pileup_2018_shifts.root'),
+        '2016': hcom.abs_path('data/pileup/PreUL13TeV/pileup_2016BF.root'),
+        '2017': hcom.abs_path('data/pileup/PreUL13TeV/pileup_2017_shifts.root'),
+        '2018': hcom.abs_path('data/pileup/PreUL13TeV/pileup_2018_shifts.root'),
     }
     data_file_dict = {
         '2016': {
-            'down':     abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-66000ub.root'),      
-            'nominal':  abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-69200ub.root'),
-            'up':       abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-72400ub.root'),      
+            'down':     hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-66000ub.root'),      
+            'nominal':  hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-69200ub.root'),
+            'up':       hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2016-72400ub.root'),      
         },
         '2017': {
-            'down':     abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-66000ub-99bins.root'),      
-            'nominal':  abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root'),
-            'up':       abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-72400ub-99bins.root'),      
+            'down':     hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-66000ub-99bins.root'),      
+            'nominal':  hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root'),
+            'up':       hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2017-72400ub-99bins.root'),      
         },
         '2018': {
-            'down':     abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-66000ub-99bins.root'),      
-            'nominal':  abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-69200ub-99bins.root'),
-            'up':       abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-72400ub-99bins.root'),      
+            'down':     hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-66000ub-99bins.root'),      
+            'nominal':  hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-69200ub-99bins.root'),
+            'up':       hcom.abs_path('pileup/PreUL13TeV/PileupHistogram-goldenJSON-13tev-2018-72400ub-99bins.root'),      
         },
     }
     PUfunc = {}
