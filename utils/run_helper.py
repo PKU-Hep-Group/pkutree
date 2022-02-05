@@ -11,6 +11,8 @@ from coffea.nanoevents import NanoEventsFactory, NanoAODSchema, BaseSchema, Tree
 from coffea import processor
 import utils.common_helper as hcom
 import utils.step_helper as hstep
+import time
+import pickle
 
 import logging
 logger = logging.getLogger('run_helper')
@@ -25,6 +27,7 @@ def get_cfg(args):
         'sample': args.sample,
         'all': args.all,
         'format': args.format,
+        'norm': args.norm,
         'pre': args.pre,
         'step': args.step,
         'nworker': args.nworker,
@@ -66,6 +69,7 @@ def get_cfg(args):
        'sample' : %s,
           'all' : %s,
        'format' : %s,
+         'norm' : %s,
           'pre' : %s,
          'step' : %s,
       'nworker' : %s,
@@ -82,6 +86,7 @@ def get_cfg(args):
         args.sample,
         args.all,
         args.format,
+        args.norm,
         args.pre,
         args.step,
         args.nworker,
@@ -99,6 +104,23 @@ def get_file_list(fpath, pattern):
     return flist
 
 def get_sample_info(sample, cfg):
+    # get xsec_norm
+    norm = 1.0
+    if cfg['norm'] and not cfg['data']: 
+        sxsec = cfg['ds_yml'][sample]['xsec']
+        with open(hcom.abs_path(f"rundoc/{cfg['channel']}_{cfg['year']}_{cfg['version']}_obj_sel_count.yaml"), 'r') as f:
+            ncount_cfg = yaml.load(f, Loader=yaml.FullLoader)
+            if not sample in ncount_cfg.keys():
+                logger.error("[Error] sample '%s' not found in ncount_cfg", sample)
+                exit(1)
+            else:
+                sneff = float(ncount_cfg[sample]['neff'])
+                xsec_norm = sxsec * 1000 / sneff
+        with open(hcom.abs_path("config/lumi_cfg.yaml"), 'r') as f:
+            lumi_cfg = yaml.load(f, Loader=yaml.FullLoader)
+            lumi = lumi_cfg[cfg['year']]
+        norm = xsec_norm * lumi
+
     # sample dataset name
     sdataset = cfg['ds_yml'][sample]['dataset']
     if cfg['pre'] == None:
@@ -141,14 +163,24 @@ def get_sample_info(sample, cfg):
     else:
         os.makedirs(out_path)
 
-    sinfo = {
-        "treename": "Events",
-        "files": get_file_list(in_path,f"*.{cfg['format']}"),
-        "metadata": {
-            "outpath": out_path,
+    if cfg['norm']: 
+        sinfo = {
+            "treename": "Events",
+            "files": get_file_list(in_path,f"*.{cfg['format']}"),
+            "metadata": {
+                "outpath": out_path,
+                "norm": norm,
+            }
         }
-    }
-    
+    else:
+        sinfo = {
+            "treename": "Events",
+            "files": get_file_list(in_path,f"*.{cfg['format']}"),
+            "metadata": {
+                "outpath": out_path,
+            }
+        }
+
     return sinfo
 
 def get_file_dict(cfg):
@@ -186,16 +218,21 @@ def get_file_dict(cfg):
                     fdict[isp] = sinfo
             else:
                 pass
-
+    # print(fdict)
     return fdict
 
 def get_run(fdict, cfg):
-
+    toc = time.monotonic()
     try:
         with open(hcom.abs_path(f"rundoc/{cfg['channel']}_{cfg['year']}_{cfg['version']}_{cfg['step']}_count.yaml"), 'r') as f:
             ncount_cfg = yaml.load(f, Loader=yaml.FullLoader)
     except:
         ncount_cfg = {}
+
+    # output file
+    out_path = f"{cfg['out_dir']}/{cfg['version']}/{cfg['step']}/"
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
 
     schema_dict = {
         'NanoAODSchema': NanoAODSchema,
@@ -205,6 +242,7 @@ def get_run(fdict, cfg):
     executor_dict = {
         'FuturesExecutor': processor.FuturesExecutor(workers=int(cfg['nworker'])),
         'IterativeExecutor': processor.IterativeExecutor(),
+        'DaskExecutor': processor.DaskExecutor(),
     }
     
     logger.info(">>> Start >>> Schema: %s, Executor: %s",cfg['schema'],cfg['executor'])
@@ -215,11 +253,11 @@ def get_run(fdict, cfg):
         chunksize=float(cfg['chunksize']),
     )
     
-    the_processor = hstep.get_step_module(cfg['channel'],cfg['step'])
+    fdict_new, the_processor = hstep.get_step_module(fdict, cfg)
     results = run(
-        fdict,
+        fdict_new,
         "Events",
-        processor_instance= the_processor(year=cfg['year'],data=cfg['data'])
+        processor_instance= the_processor
     )
 
     try:
@@ -239,5 +277,17 @@ def get_run(fdict, cfg):
         logger.warning("Results don't have ntot, npos, nneg, neff, npass")
         pass
 
+    # store the results
+    sample_type = "data" if cfg['data'] else "mc"
+    with open(f"{out_path}/results_{cfg['channel']}_{cfg['year']}_{cfg['version']}_{cfg['step']}_{sample_type}.pkl", "wb") as f:
+        pickle.dump(results, f)
 
-    return results
+    tic = time.monotonic()
+    logger.info(
+        f"""
+================================
+ Total cost time: {tic-toc} s
+================================
+        """
+    )
+    return True

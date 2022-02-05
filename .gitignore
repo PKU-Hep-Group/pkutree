@@ -9,3 +9,6 @@ __pycache__
 
 *.parquet
 *.log
+dask-worker-*
+*.pkl
+.ipynb_checkpoints

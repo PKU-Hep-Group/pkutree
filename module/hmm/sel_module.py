@@ -16,6 +16,7 @@ import argparse
 import os
 from utils import common_helper as com
 from utils import analyze_helper as ana
+from coffea import hist as chist
 
 import logging
 logger = logging.getLogger('obj_helper')
@@ -86,7 +87,7 @@ class obj_sel(processor.ProcessorABC):
         # Rochester correction, the nomial pt will be updated
         good_muons['pt'] , good_muons['pt_roccor_up'] , good_muons['pt_roccor_down'] = ana.apply_rochester_correction(good_muons,self.data,self.year)
         if not self.data:
-            good_muons['is_real'] = ~np.isnan(ak.fill_none(good_muons.matched_gen.pt, np.nan))
+            good_muons['is_real'] = (~np.isnan(ak.fill_none(good_muons.matched_gen.pt, np.nan)))*1
         # ordered by new pt: high -> low
         index = ak.argsort(good_muons.pt, ascending=False)
         good_muons = good_muons[index]
@@ -127,7 +128,7 @@ class obj_sel(processor.ProcessorABC):
         good_jets['pt_orig'] = good_jets.pt
         good_jets['mass_orig'] = good_jets.mass
         if not self.data:
-            good_jets['is_real'] = ~np.isnan(ak.fill_none(good_jets.matched_gen.pt, np.nan))
+            good_jets['is_real'] = (~np.isnan(ak.fill_none(good_jets.matched_gen.pt, np.nan)))*1
             
             good_jets["pt_raw"] = (1 - good_jets.rawFactor)*good_jets.pt
             good_jets["mass_raw"] = (1 - good_jets.rawFactor)*good_jets.mass
@@ -221,8 +222,8 @@ class obj_sel(processor.ProcessorABC):
             eve_dict['event'] = events.event
             # hlt
             for ihlt in ['IsoMu24']:
-                eve_dict[f"HLT_{ihlt}"] = events.HLT[ihlt]
-            eve_dict['metFilter'] = ana.get_metFilter(events,self.year)        
+                eve_dict[f"HLT_{ihlt}"] = events.HLT[ihlt]*1
+            eve_dict['metFilter'] = ak.Array(ana.get_metFilter(events,self.year))*1       
             # other info for MC
             if not self.data:
                 eve_dict['Generator_weight'] = events.Generator.weight
@@ -255,6 +256,146 @@ class obj_sel(processor.ProcessorABC):
         else:
             pass
 
+        result["ntot"][dataset] += ntot
+        result["npos"][dataset] += npos
+        result["nneg"][dataset] += nneg
+        result["neff"][dataset] += (npos-nneg)
+        result["npass"][dataset] += npassed
+        return result
+
+    def postprocess(self, accumulator):
+        return accumulator
+
+
+class vbf_sel(processor.ProcessorABC):
+    """
+    VBF selection after Object selection
+    """
+
+    def __init__(self, year='2018', data=False, norm_dict=None):
+        self._accumulator = processor.dict_accumulator(
+            {
+                "ntot": processor.defaultdict_accumulator(int),
+                "npos": processor.defaultdict_accumulator(int),
+                "nneg": processor.defaultdict_accumulator(int),
+                "neff": processor.defaultdict_accumulator(int),
+                "npass": processor.defaultdict_accumulator(int),
+                "zmass": chist.Hist(
+                    "Events",
+                    chist.Cat("dataset", "Dataset"),
+                    chist.Bin("zmass", "$m_{\mu\mu}$ [GeV]", 30, 76, 106),                 
+                ),                
+                "hmass": chist.Hist(
+                    "Events",
+                    chist.Cat("dataset", "Dataset"),
+                    chist.Bin("hmass", "$m_{\mu\mu}$ [GeV]", 40, 110, 150),                 
+                ),                
+                "mass": chist.Hist(
+                    "Events",
+                    chist.Cat("dataset", "Dataset"),
+                    chist.Bin("mass", "$m_{\mu\mu}$ [GeV]", 80, 70, 150),                 
+                ),                
+            }
+        )
+        self.year = year
+        self.data = data
+        self.norm_dict = norm_dict
+
+    @property
+    def accumulator(self):
+        return self._accumulator
+
+    def process(self, events):
+        result = self.accumulator.identity()
+        dataset = events.metadata['dataset']
+        norm = self.norm_dict[dataset]
+
+        if not self.data:
+            # count nevents
+            npos = ak.sum(events.Generator.weight > 0)
+            nneg = ak.sum(events.Generator.weight < 0)
+            ntot = len(events.Generator.weight)
+            norm *= np.sign(events.Generator.weight)
+        else:
+            npos = len(events)
+            nneg = 0
+            ntot = len(events)            
+
+        # print(events.fields)
+        # print(type(events))
+        ############
+        # trigger
+        events = events.mask[events.HLT.IsoMu24 > 0.5]
+        ############
+        # muons
+        # logger.info(">>> Muon selection >>> entries %s",ak.sum((events.run!=None)))
+        sel_nmu = ak.count(events.Muon.pt,axis=-1) == 2
+        events = events.mask[sel_nmu]
+        muons = events.Muon
+        if not self.year == "2017":
+            sel_mu_1 = (muons.pt[:,0] > 26) & (muons.pt[:,1] > 20)
+        else:
+            sel_mu_1 = (muons.pt[:,0] > 29) & (muons.pt[:,1] > 20)
+        if not self.data:
+            sel_mu_2 = (muons.is_real[:,0] > 0.5) & (muons.is_real[:,1] > 0.5)
+            sel_mu_tot = sel_mu_1 & sel_mu_2
+        else:
+            sel_mu_tot = sel_mu_1
+        muons = muons.mask[sel_mu_tot]
+        events = events.mask[sel_mu_tot]
+        
+        # ############
+        # # jets
+        # # logger.info(">>> Jet selection >>> entries %s",ak.sum((events.run!=None)))
+        jets = events.Jet
+        # bjet
+        medium_bjet = (jets.btagDeepFlavB > 0.2770) & (jets.pt > 25) & (abs(jets.eta) < 2.4)
+        n_medium_bjet = ak.sum(medium_bjet,axis=1)
+        loose_bjet = (jets.btagDeepFlavB > 0.0494) & (jets.pt > 25) & (abs(jets.eta) < 2.4)
+        n_loose_bjet = ak.sum(loose_bjet,axis=1)
+        jets = jets.mask[(n_medium_bjet < 1) & (n_loose_bjet < 2)]
+
+        ljet_tag = (jets.btagDeepFlavB <= 0.0494)
+        n_ljet = ak.sum(ljet_tag,axis=1)
+        jets = jets.mask[n_ljet >= 2]
+        ljets = jets[ljet_tag]
+
+        # vbs cuts
+        sel_ljet_1 = (ljets.pt[:,0] > 35) & (ljets.pt[:,1] > 25)
+        sel_ljet_2 = ((ljets[:,0] + ljets[:,1]).mass > 400) & (np.abs(ljets[:,0].eta - ljets[:,1].eta) > 2.5)
+
+        ljets = ljets.mask[sel_ljet_1 & sel_ljet_2]
+        events = events.mask[sel_ljet_1 & sel_ljet_2]
+
+        ########
+        # Total
+        total_sel = ak.fill_none(events.run!=None, False)
+        events = events[total_sel]
+        muons = muons[total_sel]
+        ljets = ljets[total_sel]
+        wgt = norm[total_sel]
+
+        # check passed events
+        npassed = len(events.run)
+
+        ############
+        # fill histograms
+        dimuon_mass = (muons[:,0] + muons[:,1]).mass
+        result["zmass"].fill(
+            dataset=dataset,
+            zmass=dimuon_mass,
+            weight = wgt,
+        )
+        result["hmass"].fill(
+            dataset=dataset,
+            hmass=dimuon_mass,
+            weight = wgt,
+        )
+        result["mass"].fill(
+            dataset=dataset,
+            mass=dimuon_mass,
+            weight = wgt,
+        )
         result["ntot"][dataset] += ntot
         result["npos"][dataset] += npos
         result["nneg"][dataset] += nneg

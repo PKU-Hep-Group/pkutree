@@ -34,6 +34,11 @@ loggers:
     handlers: [console, file, error]
     propagate: no
 
+  analyze_helper:
+    level: INFO
+    handlers: [console, file, error]
+    propagate: no
+
   sel_module:
     level: INFO
     handlers: [console, file, error]

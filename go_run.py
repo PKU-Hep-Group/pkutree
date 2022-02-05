@@ -13,6 +13,7 @@ parser.add_argument('-r', '--redo', help='redo the job, default: False', action=
 parser.add_argument('-s', '--sample', help='run on which sample, can be more than 1', nargs='+', default=None)
 parser.add_argument('-a', '--all', help='run on all samples, default: False', action='store_true', default=False)
 parser.add_argument('-f', '--format', help='input file format, default is root', choices=('root','parquet'), default='root')
+parser.add_argument('-n', '--norm', help="get normlization of each sample, the doc of 'obj_sel' step needed", action='store_true', default=False)
 parser.add_argument('--pre', help='the name of the pre-step', default=None)
 parser.add_argument('--step', help='which step to run', default='obj_sel')
 parser.add_argument('--nworker', help='number of workers, default is 100', default='100')
@@ -34,9 +35,9 @@ def to_run(cfg):
     if len(fdict) < 1:
         logger.warning("No samples to run")
         return False
-    results = hrun.get_run(fdict, cfg)
+    hrun.get_run(fdict, cfg)
     logger.info("<<< end running <<<")
-    return results
+    return True
 
 if __name__ == '__main__':
     if (not args.sample) and (not args.all):
