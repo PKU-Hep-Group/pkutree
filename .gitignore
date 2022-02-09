@@ -12,3 +12,4 @@ __pycache__
 dask-worker-*
 *.pkl
 .ipynb_checkpoints
+*.logsource

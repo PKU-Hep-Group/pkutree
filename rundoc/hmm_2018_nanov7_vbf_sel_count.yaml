@@ -136,6 +136,30 @@ ST_tW_top:
   npass: '597'
   npos: '87441'
   ntot: '87601'
+SingleMuon_Run2018A:
+  neff: '8399956'
+  nneg: '0'
+  npass: '115314'
+  npos: '8399956'
+  ntot: '8399956'
+SingleMuon_Run2018B:
+  neff: '2553486'
+  nneg: '0'
+  npass: '33992'
+  npos: '2553486'
+  ntot: '2553486'
+SingleMuon_Run2018C:
+  neff: '2542231'
+  nneg: '0'
+  npass: '35964'
+  npos: '2542231'
+  ntot: '2542231'
+SingleMuon_Run2018D:
+  neff: '12121359'
+  nneg: '0'
+  npass: '176523'
+  npos: '12121359'
+  ntot: '12121359'
 TTTJ:
   neff: '3817'
   nneg: '7'

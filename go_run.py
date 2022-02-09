@@ -19,7 +19,7 @@ parser.add_argument('--step', help='which step to run', default='obj_sel')
 parser.add_argument('--nworker', help='number of workers, default is 100', default='100')
 parser.add_argument('--chunksize', help='chunksize, default is 300000', default='300000')
 parser.add_argument('--schema', help='which schema? Default: NanoAODSchema, others: BaseSchema', choices=('NanoAODSchema','BaseSchema'), default='NanoAODSchema')
-parser.add_argument('--executor', help='which executor? Default: FuturesExecutor, others: IterativeExecutor', choices=('FuturesExecutor','IterativeExecutor'), default='FuturesExecutor')
+parser.add_argument('--executor', help='which executor? Default: FuturesExecutor, others: IterativeExecutor, DaskExecutor', choices=('FuturesExecutor','IterativeExecutor','DaskExecutor'), default='FuturesExecutor')
 # ,default=['WpWpJJ_EWK','WpWpJJ_EWK_powheg','WmWmJJ_EWK_powheg'])
 args = parser.parse_args()
 

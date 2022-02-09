@@ -242,9 +242,12 @@ def get_run(fdict, cfg):
     executor_dict = {
         'FuturesExecutor': processor.FuturesExecutor(workers=int(cfg['nworker'])),
         'IterativeExecutor': processor.IterativeExecutor(),
-        'DaskExecutor': processor.DaskExecutor(),
     }
-    
+    if cfg['executor'] == 'DaskExecutor':
+        from dask.distributed import Client
+        client = Client(n_workers=int(cfg['nworker']), threads_per_worker=1, memory_limit='4GB')
+        executor_dict['DaskExecutor'] = processor.DaskExecutor(client)
+
     logger.info(">>> Start >>> Schema: %s, Executor: %s",cfg['schema'],cfg['executor'])
     run = processor.Runner(
         executor=executor_dict[cfg['executor']],

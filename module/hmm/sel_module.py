@@ -320,6 +320,7 @@ class vbf_sel(processor.ProcessorABC):
             npos = len(events)
             nneg = 0
             ntot = len(events)            
+            norm *= np.ones(len(events))
 
         # print(events.fields)
         # print(type(events))
