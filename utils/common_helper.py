@@ -25,6 +25,7 @@ def setup_logging(default_path=abs_path('config/logging_cfg.yaml'), default_leve
         logging.basicConfig(level=default_level)
     return
 
+
 def get_randomstr(length=11):
     ran_str = ''.join(random.sample(string.ascii_letters + string.digits, length))
     return ran_str

@@ -29,7 +29,17 @@ loggers:
     handlers: [console]
     propagate: no
 
+  plot:
+    level: INFO
+    handlers: [console]
+    propagate: no
+
   run_helper:
+    level: INFO
+    handlers: [console, file, error]
+    propagate: no
+
+  plot_helper:
     level: INFO
     handlers: [console, file, error]
     propagate: no

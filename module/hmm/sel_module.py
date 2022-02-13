@@ -1,3 +1,4 @@
+from cmath import log
 import uproot as up
 import awkward as ak
 import coffea
@@ -19,7 +20,7 @@ from utils import analyze_helper as ana
 from coffea import hist as chist
 
 import logging
-logger = logging.getLogger('obj_helper')
+logger = logging.getLogger('sel_module')
 
 
 class obj_sel(processor.ProcessorABC):
@@ -235,6 +236,25 @@ class obj_sel(processor.ProcessorABC):
                 eve_dict['PSWeight'] = events.PSWeight
                 # pu weights
                 eve_dict['PUWeight_nominal'], eve_dict['PUWeight_up'], eve_dict['PUWeight_down'] = ana.get_pusf(events.Pileup.nTrueInt, self.year)
+                # genpart
+                eve_dict['nGenPart'] = ak.count(events.GenPart.pt,axis=-1)
+                for ibr in events.GenPart.fields:
+                    if not ibr.endswith('IdxMotherG') and not ibr.endswith('IdxG'):
+                        eve_dict[f"GenPart_{ibr}"] = events.GenPart[ibr]
+                # genjet
+                eve_dict['nGenJet'] = ak.count(events.GenJet.pt,axis=-1)
+                for ibr in events.GenJet.fields:
+                    if ibr=='hadronFlavour':
+                        eve_dict[f"GenJet_{ibr}"] = ak.values_astype(events.GenJet[ibr], np.int32)
+                    else:
+                        eve_dict[f"GenJet_{ibr}"] = events.GenJet[ibr]
+                # GenDressedLepton
+                eve_dict['nGenDressedLepton'] = ak.count(events.GenDressedLepton.pt,axis=-1)
+                for ibr in events.GenDressedLepton.fields:
+                    if ibr == 'hasTauAnc':
+                        eve_dict[f"GenDressedLepton_{ibr}"] = events.GenDressedLepton[ibr]*1
+                    else:               
+                        eve_dict[f"GenDressedLepton_{ibr}"] = events.GenDressedLepton[ibr]
             # muon info
             eve_dict['nMuon'] = ak.count(good_muons.pt,axis=-1)
             for ibr in good_muons.fields:
@@ -272,7 +292,7 @@ class vbf_sel(processor.ProcessorABC):
     VBF selection after Object selection
     """
 
-    def __init__(self, year='2018', data=False, norm_dict=None):
+    def __init__(self, info_dict):
         self._accumulator = processor.dict_accumulator(
             {
                 "ntot": processor.defaultdict_accumulator(int),
@@ -295,11 +315,20 @@ class vbf_sel(processor.ProcessorABC):
                     chist.Cat("dataset", "Dataset"),
                     chist.Bin("mass", "$m_{\mu\mu}$ [GeV]", 80, 70, 150),                 
                 ),                
+                "met_pt": chist.Hist(
+                    "Events",
+                    chist.Cat("dataset", "Dataset"),
+                    chist.Bin("met_pt", "p$_{T}^{miss}$ [GeV]", 80, 0, 200),                 
+                ),                
+                "mjj": chist.Hist(
+                    "Events",
+                    chist.Cat("dataset", "Dataset"),
+                    chist.Bin("mjj", "m$_{jj}$ [GeV]", 80, 400, 2500),                 
+                ),                
             }
         )
-        self.year = year
-        self.data = data
-        self.norm_dict = norm_dict
+
+        self.info_dict = info_dict
 
     @property
     def accumulator(self):
@@ -308,9 +337,55 @@ class vbf_sel(processor.ProcessorABC):
     def process(self, events):
         result = self.accumulator.identity()
         dataset = events.metadata['dataset']
-        norm = self.norm_dict[dataset]
+        # get the info
+        data = self.info_dict[dataset].get("data", False)
+        signal = self.info_dict[dataset].get("signal", False)
+        datadriven = self.info_dict[dataset].get("datadriven", False)
+        norm = self.info_dict[dataset].get("norm", 1.)
+        year = self.info_dict[dataset].get("year", "2018")
+        weight = self.info_dict[dataset].get("weight", "1")
+        brachmap = self.info_dict[dataset].get("brachmap", {})
 
-        if not self.data:
+        # handle the nuisance
+        # weight
+        dummy_weight = np.ones(len(events))
+        if not data:
+            if hasattr(events, "LHEPdfWeight"):
+                LHEPdfWeight = events.LHEPdfWeight
+            if hasattr(events, "LHEScaleWeight"):
+                LHEScaleWeight = events.LHEScaleWeight
+            if hasattr(events, "PSWeight"):
+                PSWeight = events.PSWeight
+            if hasattr(events, "PUWeight"):
+                PUWeight = events.PUWeight
+        try:
+            additional_weight = eval("dummy_weight*{}".format(weight))
+        except:
+            logger.error("Invalid weight expression: %s", weight)
+            exit(1)
+        # shape
+        muons = events.Muon
+        jets = events.Jet
+        MET = events.MET
+        if len(brachmap) > 0:
+            for ibr in brachmap:
+                if ibr.startswith("Muon_"):
+                    muons[ibr[5:]] = muons[brachmap[ibr][5:]]
+                if ibr.startswith("Jet_"):
+                    jets[ibr[4:]] = jets[brachmap[ibr][4:]]
+                if ibr.startswith("MET_"):
+                    MET[ibr[4:]] = MET[brachmap[ibr][4:]]
+                if not data:
+                    if ibr.startswith("PUWeight_"):
+                        PUWeight[ibr[9:]] = PUWeight[brachmap[ibr][9:]]
+        # ordered by new pt: high -> low
+        index = ak.argsort(muons.pt, ascending=False)
+        muons = muons[index]
+        index = ak.argsort(jets.pt, ascending=False)
+        jets = jets[index]
+
+        # get the number of events
+        if not data:
             # count nevents
             npos = ak.sum(events.Generator.weight > 0)
             nneg = ak.sum(events.Generator.weight < 0)
@@ -330,14 +405,15 @@ class vbf_sel(processor.ProcessorABC):
         ############
         # muons
         # logger.info(">>> Muon selection >>> entries %s",ak.sum((events.run!=None)))
-        sel_nmu = ak.count(events.Muon.pt,axis=-1) == 2
+        sel_nmu = ak.count(muons.pt,axis=-1) == 2
         events = events.mask[sel_nmu]
-        muons = events.Muon
-        if not self.year == "2017":
+        align_sel = ak.fill_none(events.run!=None, False)
+        muons = muons.mask[align_sel]
+        if not year == "2017":
             sel_mu_1 = (muons.pt[:,0] > 26) & (muons.pt[:,1] > 20)
         else:
             sel_mu_1 = (muons.pt[:,0] > 29) & (muons.pt[:,1] > 20)
-        if not self.data:
+        if not data:
             sel_mu_2 = (muons.is_real[:,0] > 0.5) & (muons.is_real[:,1] > 0.5)
             sel_mu_tot = sel_mu_1 & sel_mu_2
         else:
@@ -348,7 +424,8 @@ class vbf_sel(processor.ProcessorABC):
         # ############
         # # jets
         # # logger.info(">>> Jet selection >>> entries %s",ak.sum((events.run!=None)))
-        jets = events.Jet
+        align_sel = ak.fill_none(events.run!=None, False)
+        jets = jets.mask[align_sel]
         # bjet
         medium_bjet = (jets.btagDeepFlavB > 0.2770) & (jets.pt > 25) & (abs(jets.eta) < 2.4)
         n_medium_bjet = ak.sum(medium_bjet,axis=1)
@@ -374,7 +451,8 @@ class vbf_sel(processor.ProcessorABC):
         events = events[total_sel]
         muons = muons[total_sel]
         ljets = ljets[total_sel]
-        wgt = norm[total_sel]
+        MET = MET[total_sel]
+        wgt = norm[total_sel]*additional_weight[total_sel]
 
         # check passed events
         npassed = len(events.run)
@@ -395,6 +473,16 @@ class vbf_sel(processor.ProcessorABC):
         result["mass"].fill(
             dataset=dataset,
             mass=dimuon_mass,
+            weight = wgt,
+        )
+        result["met_pt"].fill(
+            dataset=dataset,
+            met_pt=MET.pt,
+            weight = wgt,
+        )
+        result["mjj"].fill(
+            dataset=dataset,
+            mjj=(ljets[:,0] + ljets[:,1]).mass,
             weight = wgt,
         )
         result["ntot"][dataset] += ntot

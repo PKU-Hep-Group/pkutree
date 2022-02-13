@@ -1,0 +1,89 @@
+'2018':
+    Muon_pt_scale:
+        Muon_pt: Muon_pt_roccor
+        MET_pt: MET_pt_roccor
+        MET_phi: MET_phi_roccor
+        
+    MET_pt_UnclusteredEnergy:
+        MET_pt: MET_pt_UnclusteredEnergy
+        MET_phi: MET_phi_UnclusteredEnergy
+
+    JER:
+        Jet_pt: Jet_pt_JER
+        Jet_mass: Jet_mass_JER
+        MET_pt: MET_pt_JER
+        MET_phi: MET_phi_JER
+
+    JES_Absolute:
+        Jet_pt: Jet_pt_JES_Absolute
+        Jet_mass: Jet_mass_JES_Absolute
+        MET_pt: MET_pt_JES_Absolute
+        MET_phi: MET_phi_JES_Absolute
+
+    JES_Absolute_2018:
+        Jet_pt: Jet_pt_JES_Absolute_2018
+        Jet_mass: Jet_mass_JES_Absolute_2018
+        MET_pt: MET_pt_JES_Absolute_2018
+        MET_phi: MET_phi_JES_Absolute_2018
+
+    JES_BBEC1:
+        Jet_pt: Jet_pt_JES_BBEC1
+        Jet_mass: Jet_mass_JES_BBEC1
+        MET_pt: MET_pt_JES_BBEC1
+        MET_phi: MET_phi_JES_BBEC1
+
+    JES_BBEC1_2018:
+        Jet_pt: Jet_pt_JES_BBEC1_2018
+        Jet_mass: Jet_mass_JES_BBEC1_2018
+        MET_pt: MET_pt_JES_BBEC1_2018
+        MET_phi: MET_phi_JES_BBEC1_2018
+
+    JES_EC2:
+        Jet_pt: Jet_pt_JES_EC2
+        Jet_mass: Jet_mass_JES_EC2
+        MET_pt: MET_pt_JES_EC2
+        MET_phi: MET_phi_JES_EC2
+
+    JES_EC2_2018:
+        Jet_pt: Jet_pt_JES_EC2_2018
+        Jet_mass: Jet_mass_JES_EC2_2018
+        MET_pt: MET_pt_JES_EC2_2018
+        MET_phi: MET_phi_JES_EC2_2018
+        
+    JES_FlavorQCD:
+        Jet_pt: Jet_pt_JES_FlavorQCD
+        Jet_mass: Jet_mass_JES_FlavorQCD
+        MET_pt: MET_pt_JES_FlavorQCD
+        MET_phi: MET_phi_JES_FlavorQCD
+
+    JES_HF:
+        Jet_pt: Jet_pt_JES_HF
+        Jet_mass: Jet_mass_JES_HF
+        MET_pt: MET_pt_JES_HF
+        MET_phi: MET_phi_JES_HF
+
+    JES_HF_2018:
+        Jet_pt: Jet_pt_JES_HF_2018
+        Jet_mass: Jet_mass_JES_HF_2018
+        MET_pt: MET_pt_JES_HF_2018
+        MET_phi: MET_phi_JES_HF_2018
+
+    JES_RelativeBal:
+        Jet_pt: Jet_pt_JES_RelativeBal
+        Jet_mass: Jet_mass_JES_RelativeBal
+        MET_pt: MET_pt_JES_RelativeBal
+        MET_phi: MET_phi_JES_RelativeBal
+
+    JES_RelativeSample_2018:
+        Jet_pt: Jet_pt_JES_RelativeSample_2018
+        Jet_mass: Jet_mass_JES_RelativeSample_2018
+        MET_pt: MET_pt_JES_RelativeSample_2018
+        MET_phi: MET_phi_JES_RelativeSample_2018
+
+    JES_Total:
+        Jet_pt: Jet_pt_JES_Total
+        Jet_mass: Jet_mass_JES_Total
+        MET_pt: MET_pt_JES_Total
+        MET_phi: MET_phi_JES_Total
+
+

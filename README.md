@@ -61,8 +61,9 @@ python3 go_run.py -c hmm -y 2018 --step obj_sel -s WZZ -v nanov7 --chunksize 500
 python3 go_run.py -c hmm -y 2018 --step obj_sel -v nanov7 --chunksize 500000 -a
 
 # make plots
-python3 go_run.py -c hmm -y 2018 --step vbf_sel --pre obj_sel -n -d --chunksize 1000000 -a -v nanov7 -r --format parquet 2>&1 | tee plot.log
-python3 go_run.py -c hmm -y 2018 --step vbf_sel --pre obj_sel -n -a -v nanov7 -r --chunksize 1000000 --format parquet 2>&1 | tee plot.log
+python go_plot.py hist -y 2018 -c hmm -f parquet --chunksize 5000
+# consider uncertainty
+python go_plot.py hist -y 2018 -c hmm -f parquet --chunksize 100000 --nuisance
 ```
 
 

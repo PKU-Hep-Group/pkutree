@@ -1,18 +1,18 @@
-import json
+import glob
+from heapq import merge
 import os
 import os.path
-import re
-import subprocess
-import sys
 import yaml
 from pathlib import Path
 import shutil
-from coffea.nanoevents import NanoEventsFactory, NanoAODSchema, BaseSchema, TreeMakerSchema
+from coffea.nanoevents import NanoAODSchema, BaseSchema
 from coffea import processor
 import utils.common_helper as hcom
 import utils.step_helper as hstep
 import time
 import pickle
+import awkward as ak
+import numpy as np
 
 import logging
 logger = logging.getLogger('run_helper')
@@ -28,6 +28,7 @@ def get_cfg(args):
         'all': args.all,
         'format': args.format,
         'norm': args.norm,
+        'merge': args.merge,
         'pre': args.pre,
         'step': args.step,
         'nworker': args.nworker,
@@ -70,6 +71,7 @@ def get_cfg(args):
           'all' : %s,
        'format' : %s,
          'norm' : %s,
+        'merge' : %s,
           'pre' : %s,
          'step' : %s,
       'nworker' : %s,
@@ -87,6 +89,7 @@ def get_cfg(args):
         args.all,
         args.format,
         args.norm,
+        args.merge,
         args.pre,
         args.step,
         args.nworker,
@@ -133,9 +136,9 @@ def get_sample_info(sample, cfg):
         else:
             in_path = f"{cfg['in_dir']}/{cfg['version']}/{sdataset}/"
     else:
-        in_path = f"{cfg['out_dir']}/{cfg['version']}/{cfg['pre']}/{sample}/"
+        in_path = f"{cfg['out_dir']}/{cfg['version']}/{cfg['pre']}/{cfg['year']}/{sample}/"
 
-    out_path = f"{cfg['out_dir']}/{cfg['version']}/{cfg['step']}/{sample}/"
+    out_path = f"{cfg['out_dir']}/{cfg['version']}/{cfg['step']}/{cfg['year']}/{sample}/"
     
     done_before = False
     try:
@@ -221,18 +224,8 @@ def get_file_dict(cfg):
     # print(fdict)
     return fdict
 
-def get_run(fdict, cfg):
-    toc = time.monotonic()
-    try:
-        with open(hcom.abs_path(f"rundoc/{cfg['channel']}_{cfg['year']}_{cfg['version']}_{cfg['step']}_count.yaml"), 'r') as f:
-            ncount_cfg = yaml.load(f, Loader=yaml.FullLoader)
-    except:
-        ncount_cfg = {}
 
-    # output file
-    out_path = f"{cfg['out_dir']}/{cfg['version']}/{cfg['step']}/"
-    if not os.path.exists(out_path):
-        os.makedirs(out_path)
+def running(fdict, cfg):
 
     schema_dict = {
         'NanoAODSchema': NanoAODSchema,
@@ -240,7 +233,7 @@ def get_run(fdict, cfg):
     }
 
     executor_dict = {
-        'FuturesExecutor': processor.FuturesExecutor(workers=int(cfg['nworker'])),
+        'FuturesExecutor': processor.FuturesExecutor(workers=int(cfg['nworker'])), # 
         'IterativeExecutor': processor.IterativeExecutor(),
     }
     if cfg['executor'] == 'DaskExecutor':
@@ -263,6 +256,85 @@ def get_run(fdict, cfg):
         processor_instance= the_processor
     )
 
+    return results
+
+def merge_parquet(file_folder,match_pattern="*.parquet",chunksize=300000,outprefix="merged"):
+    # logger.info("[merge_parquet] file_folder: %s",file_folder)
+    toc = time.monotonic()
+    print("[merge_parquet] file_folder: %s" % (file_folder))
+    file_list = get_file_list(file_folder,match_pattern)
+    total_entry = 0
+    file_count = 0
+    entry_count = 0
+    event_dict = []
+    for ifile in file_list:
+        eve_ak = ak.from_parquet(ifile)
+        event_dict.append(eve_ak)
+        entry_count += len(eve_ak)
+        total_entry += len(eve_ak)
+        if entry_count > chunksize:
+            if len(event_dict) > 1:    
+                merged_ak = ak.concatenate(event_dict,axis=0)
+            elif len(event_dict) == 1:
+                merged_ak = event_dict[0]
+            else:
+                raise Exception("No event in event_dict")
+            ak.to_parquet(merged_ak,f"{file_folder}/{outprefix}_{file_count}.parquet")
+            # logger.info("File: %s, #entry: %s",file_count,entry_count)
+            print("File: %s, #entry: %s" % (file_count,entry_count))
+            
+            del merged_ak
+            file_count += 1
+            entry_count = 0
+            event_dict.clear()
+    
+    # be careful, the remaining events should be saved
+    if entry_count > 0:
+        if len(event_dict) > 1:    
+            merged_ak = ak.concatenate(event_dict,axis=0)
+        elif len(event_dict) == 1:
+            merged_ak = event_dict[0]
+        else:
+            raise Exception("No event in event_dict")
+        ak.to_parquet(merged_ak,f"{file_folder}/{outprefix}_{file_count}.parquet")
+        # logger.info("File: %s, #entry: %s",file_count,entry_count)
+        print("File: %s, #entry: %s" % (file_count,entry_count))
+
+        del merged_ak
+        file_count += 1
+        entry_count = 0
+        event_dict.clear()
+
+    # delete pre-merge files
+    for ifile in file_list:
+        os.remove(ifile)
+    # logger.info("Total files: %s, total entries: %s",file_count,total_entry)
+    tic = time.monotonic()
+    print(
+        f"""
+=======================
+ Total files: {file_count}
+ Total entries: {total_entry}
+ Total time: {np.round(tic-toc,4)} s
+=======================
+        """
+    )
+    return
+
+def get_run(fdict, cfg):
+    toc = time.monotonic()
+    try:
+        with open(hcom.abs_path(f"rundoc/{cfg['channel']}_{cfg['year']}_{cfg['version']}_{cfg['step']}_count.yaml"), 'r') as f:
+            ncount_cfg = yaml.load(f, Loader=yaml.FullLoader)
+    except:
+        ncount_cfg = {}
+
+    # output file
+    out_path = f"{cfg['out_dir']}/{cfg['version']}/{cfg['step']}/{cfg['year']}/"
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
+
+    results = running(fdict, cfg)
     try:
         for isp in results['ntot']:
             new_rlt = {
@@ -289,8 +361,14 @@ def get_run(fdict, cfg):
     logger.info(
         f"""
 ================================
- Total cost time: {tic-toc} s
+ Total cost time: {np.round(tic-toc,4)} s
 ================================
         """
     )
+    # merge the parquet files
+    if cfg['merge'] and cfg['format'] == 'parquet':
+        for isp in results['npass']:
+            if results['npass'][isp] > 0:
+                merge_parquet(f"{out_path}/{isp}")
     return True
+
