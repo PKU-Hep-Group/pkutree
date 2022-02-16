@@ -1,8 +1,9 @@
 # example of plots file
+# results include histograms
 results = {
-    '2018': '/data/pubfs/xiaoj/hmm/plot/hist_hmm_220211/results_hmm_2018.pkl',
+    '2018': '/data/pubfs/xiaoj/hmm/plot/hist_hmm_220211/reorganize_results_hmm_2018.pkl',
 }
-
+# groups
 group = {}
 group['data'] = {
     'label': 'Data',
@@ -25,7 +26,7 @@ group['DY'] = {
     'scale': 1.0,
     'subsample': {
         '2018': {
-            'DYJetsToLL_M-50_ext1': 1.0,
+            'DYJetsToLL_M-50': 1.0,
         },
     },
 }
@@ -58,9 +59,9 @@ group['top'] = {
             'TTTT_ext1': 1.0,
             'TTTW': 1.0,
             'TTTo2L2Nu': 1.0,
-            'TTToSemiLeptonic_ext1': 1.0,
+            'TTToSemiLeptonic': 1.0,
             'TTWJetsToLNu': 1.0,
-            'TTWW_ext1': 1.0,
+            'TTWW': 1.0,
             'TTZToLLNuNu_M-10': 1.0,
         },
     },
@@ -80,10 +81,10 @@ group['other'] = {
             'GluGluToContinToZZTo4tau': 1.0,
             'WWTo2L2Nu': 1.0,
             'WZTo2L2Q': 1.0,
-            'WZTo3LNu_MG_ext1': 1.0,
+            'WZTo3LNu_MG': 1.0,
             'ZZTo2L2Nu': 1.0,
             'ZZTo2L2Q': 1.0,
-            'ZZTo4L_ext1': 1.0,
+            'ZZTo4L': 1.0,
             'WWW': 1.0,
             'WWZ': 1.0,
             'WZZ': 1.0,

@@ -6,19 +6,21 @@ import logging
 
 
 parser = argparse.ArgumentParser(description='manual to this script')
-parser.add_argument('mode', help='which mode？Default: hist', choices=('hist','plot'),  default='plot')
-parser.add_argument('-y', '--year', help='which year to run？Default: 2018', choices=('2016','2017','2018'),  default='2018')
+parser.add_argument('mode', help='which mode? Default: hist', choices=('hist','plot'),  default='plot')
+parser.add_argument('-y', '--year', help='which year to run? Default: 2018', choices=('2016','2017','2018'),  default='2018')
 parser.add_argument('-c', '--channel', help='which channel: vhjj, ssww, your own channel, ...', default='vhjj')
 parser.add_argument('-s', '--step', help='which step, will decide which module to use', default='vbf_sel')
 parser.add_argument('-r', '--redo', help='redo the job, default: False', action='store_true', default=False)
 parser.add_argument('-f', '--format', help='input file format, default is root', choices=('root','parquet'), default='root')
-parser.add_argument('-i', '--input', help='input pkl file for plot mode', default='./test.pkl')
 parser.add_argument('--nworker', help='number of workers, default is 100', default='100')
 parser.add_argument('--chunksize', help='chunksize, default is 300000', default='300000')
 parser.add_argument('--schema', help='which schema? Default: NanoAODSchema, others: BaseSchema', choices=('NanoAODSchema','BaseSchema'), default='NanoAODSchema')
 parser.add_argument('--executor', help='which executor? Default: FuturesExecutor, others: IterativeExecutor, DaskExecutor', choices=('FuturesExecutor','IterativeExecutor','DaskExecutor'), default='FuturesExecutor')
 parser.add_argument('--config', help='config name', default='config.py')
 parser.add_argument('--nuisance', help='consider nuisances, default: False', action='store_true', default=False)
+parser.add_argument('--sum', help='sum plots from all years', action='store_true', default=False)
+parser.add_argument('--all', help='plot all years', action='store_true', default=False)
+parser.add_argument('--reorganize', help='re-organize the plots for plotting', action='store_true', default=False)
 # ,default=['WpWpJJ_EWK','WpWpJJ_EWK_powheg','WmWmJJ_EWK_powheg'])
 args = parser.parse_args()
 
@@ -43,7 +45,6 @@ def to_hist(cfg):
 
 def to_plot(cfg):
     logger.info(">>> start plotting >>>")
-    # file dict
     hplot.get_plot(cfg)
     logger.info("<<< end plotting <<<")
     return True

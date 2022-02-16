@@ -1,5 +1,6 @@
 import os
 import os.path as osp
+from matplotlib.pyplot import get
 import yaml
 from pathlib import Path
 import shutil
@@ -13,6 +14,12 @@ import importlib as imp
 import utils.run_helper as hrun
 import copy
 import numpy as np
+from hist import Hist
+from template.temp_class import super_hist
+import mplhep as hep
+import matplotlib.pyplot as plt
+import matplotlib.ticker as tik
+from typing import Optional
 
 import logging
 logger = logging.getLogger('plot_helper')
@@ -25,13 +32,15 @@ def get_cfg(args):
         'step': args.step,
         'redo': args.redo,
         'format': args.format,
-        'input': args.input,
         'nworker': args.nworker,
         'chunksize': args.chunksize,
         'schema': args.schema,
         'executor': args.executor,
         'config': args.config,
         'nuisance': args.nuisance,
+        'sum': args.sum,
+        'all': args.all,
+        'reorganize': args.reorganize,
     }
     try:
         config_content = imp.import_module(f"plotcfg.{cfg['channel']}.{cfg['config'][:-3]}")
@@ -58,13 +67,15 @@ def get_cfg(args):
          'step' : %s,
          'redo' : %s,
        'format' : %s,
-        'input' : %s,
       'nworker' : %s,
     'chunksize' : %s,
        'schema' : %s,
      'executor' : %s,
        'config' : %s,
      'nuisance' : %s,
+          'sum' : %s,
+          'all' : %s,
+   'reorganize' : %s,
 --------------------------------
         """,
         args.mode,
@@ -73,24 +84,23 @@ def get_cfg(args):
         args.step,
         args.redo,
         args.format,
-        args.input,
         args.nworker,
         args.chunksize,
         args.schema,
         args.executor,
         args.config,
         args.nuisance,
+        args.sum,
+        args.all,
+        args.reorganize,
     )
     return cfg
 
-def get_hist_key(result, exclude_list=['ntot', 'npos', 'nneg', 'neff', 'npass']):
+def get_variable_key(result, exclude_list=['ntot', 'npos', 'nneg', 'neff', 'npass']):
     """
     remove keys in exclude_list, the kept keys should be histogram names
     """
-    key_list = []
-    for iyear in result:
-        key_list = list(result[iyear].keys())
-        break
+    key_list = list(result.keys())
     for ikey in exclude_list:
         key_list.remove(ikey)
     return key_list
@@ -225,12 +235,16 @@ def add_nuisance_dict(sp_dict,nui_dict):
             pass
     return sp_dict
 
+def get_nuisance_cfg(nui_cfg):
+    nuisance_content = imp.import_module(nui_cfg)
+    nui_dict = nuisance_content.nuisances
+    return nui_dict
+
 def get_file_dict(cfg):
     sample_content = imp.import_module(cfg['samples_cfg'])
     sp_dict = sample_content.samples
     if cfg['nuisance']:
-        nuisance_content = imp.import_module(cfg['nuisances_cfg'])
-        nui_dict = nuisance_content.nuisances
+        nui_dict = get_nuisance_cfg(cfg['nuisances_cfg'])
         final_dict = add_nuisance_dict(sp_dict,nui_dict)
     else:
         final_dict = sp_dict
@@ -262,23 +276,208 @@ def get_hist(fdict, cfg):
     output_file_name = f"{cfg['out_hist']}/results_{cfg['channel']}_{cfg['year']}.pkl"
     with open(output_file_name, "wb") as f:
         pickle.dump(results, f)
-
+    if cfg['reorganize']:
+        fhist_dict,group_dict = get_plot_cfg(cfg['plot_cfg'])
+        output_file_name_reorganize = f"{cfg['out_hist']}/reorganize_results_{cfg['channel']}_{cfg['year']}.pkl"
+        reorganize_hist(cfg,results,group_dict,output_file_name_reorganize)
     tic = time.monotonic()
     logger.info(
         """
 ================================
  Total cost time: %s s
  The results: %s
+ The reorganized results: %s
 ================================
         """,
         np.round(tic - toc,4),
         output_file_name,
+        output_file_name_reorganize,
     )
     return True
 
-def get_plot(cfg):
-    toc = time.monotonic()
+def get_plot_cfg(plot_cfg):
+    plotcfg_content = imp.import_module(plot_cfg)
+    fhist_dict = plotcfg_content.results
+    group_dict = plotcfg_content.group
+    return fhist_dict,group_dict
 
-    rlt_hists = {}
-    rlt_hists[cfg['year']] = get_hist(get_file_dict(cfg),cfg)
-    # output file
+def merge_hist(hists,subsamples,postfix=""):
+    htmp = 0
+    for isub in subsamples:
+        htmp += hists[f"{isub}{postfix}",:]*subsamples[isub]
+    return htmp
+
+def reorganize_hist(cfg,hists,groups,store_path=None):
+    hvar_list = get_variable_key(hists)
+    year_list = get_year_key(groups)
+
+    # get nuisance
+    if cfg['nuisance']:
+        nui_dict = get_nuisance_cfg(cfg['nuisances_cfg'])
+    year = cfg['year']
+    if year not in year_list:
+        logger.warning("Year %s not in groups",year)
+        raise ValueError
+    # hist_dict structure:
+    # hist_dict['mass']['DYJetsToLL_M-50']['nominal'] => super_hist
+    # hist_dict['mass']['DYJetsToLL_M-50']['CMS_scale_mu']['up'] => hist
+    hist_dict = {} # histogram dictionary: hist_dict[hist_name][group_name]
+    for ivar in hvar_list:
+        all_in_hist = Hist(hists[ivar].to_boost())
+        hist_dict[ivar] = {}
+        for igp in groups:
+            hist_dict[ivar][igp] = {}
+            # nominal
+            subsample = groups[igp]['subsample'][year]
+            group_cfg = copy.deepcopy(groups[igp])
+            group_cfg.pop('subsample')
+            group_cfg['hist']=merge_hist(all_in_hist,subsample)
+            hist_dict[ivar][igp]['nominal'] = super_hist(**group_cfg)
+            # shape variations
+            for inui in nui_dict:
+                hist_dict[ivar][igp][inui] = {}
+                if nui_dict[inui]['type']=='shape':
+                    hist_dict[ivar][igp][inui]['up'] = merge_hist(all_in_hist,subsample,f"_{inui}_up")
+                    hist_dict[ivar][igp][inui]['down'] = merge_hist(all_in_hist,subsample,f"_{inui}_down")
+                # FIXME: how to deal with weights?
+                # if nui_dict[inui]['type']=='weight':
+                #     hist_dict[ivar][igp][inui]['down'] = merge_hist(all_in_hist,subsample,f"_{inui}_var{}")
+    if store_path:
+        with open(store_path, "wb") as f:
+            pickle.dump(hist_dict, f)
+
+    return hist_dict
+
+def plotting(cfg,hist_dict):
+    toc = time.monotonic()
+    hep.cms.style.CMS["legend.handlelength"]=0.7
+    hep.cms.style.CMS["legend.handleheight"]=0.7
+    hep.cms.style.CMS["legend.fontsize"]=12
+    hep.cms.style.CMS["legend.labelspacing"]=0.4
+    hep.cms.style.CMS["font.size"]=15
+    hep.cms.style.CMS["axes.labelsize"]=12
+    hep.cms.style.CMS["xtick.major.size"]=8
+    hep.cms.style.CMS["xtick.minor.size"]=4
+    hep.cms.style.CMS["xtick.major.pad"]=4
+    hep.cms.style.CMS["xtick.top"]=True
+    hep.cms.style.CMS["xtick.major.top"]=True
+    hep.cms.style.CMS["xtick.major.bottom"]=True
+    hep.cms.style.CMS["xtick.minor.top"]=True
+    hep.cms.style.CMS["xtick.minor.bottom"]=True
+    hep.cms.style.CMS["xtick.minor.visible"]=True
+    hep.cms.style.CMS["ytick.major.size"]=8
+    hep.cms.style.CMS["ytick.minor.size"]=4
+    hep.cms.style.CMS["ytick.right"]=True
+    hep.cms.style.CMS["ytick.major.left"]=True
+    hep.cms.style.CMS["ytick.major.right"]=True
+    hep.cms.style.CMS["ytick.minor.left"]=True
+    hep.cms.style.CMS["ytick.minor.right"]=True
+    hep.cms.style.CMS["ytick.minor.visible"]=True
+    # hep.cms.style.CMS["axes.linewidth"]=2
+    plt.style.use(hep.style.CMS)
+
+    os.makedirs(cfg['out_plot'],exist_ok=True)
+
+
+    for ivar in hist_dict:
+        f, ax = plt.subplots(2,1,figsize=(5,5),gridspec_kw={'height_ratios': [3.3,0.7]},sharex=True)
+        hist_list = []
+        label_list = []
+        color_list = []
+        for igp in hist_dict[ivar]:
+            if hist_dict[ivar][igp]['nominal'].data:
+                continue
+            hist_list.append(hist_dict[ivar][igp]['nominal'].hist)
+            label_list.append(hist_dict[ivar][igp]['nominal'].label)
+            color_list.append(hist_dict[ivar][igp]['nominal'].color)
+        zipped = zip(hist_list, label_list, color_list)
+        resort_zipped = sorted(zipped, key=lambda x: x[0].sum().value, reverse=False)
+        hist_tuple, label_tuple, color_tuple = zip(*resort_zipped)
+        hep.histplot(list(hist_tuple), histtype='fill', stack=True, label=list(label_tuple), color=list(color_tuple), ax=ax[0])
+        hep.histplot(hist_dict[ivar]['data']['nominal'].hist, histtype='errorbar', stack=False, label=hist_dict[ivar]['data']['nominal'].label, color=hist_dict[ivar]['data']['nominal'].color, ax=ax[0], marker='o', markersize=2,elinewidth=1)
+        # ax.legend(leg_handles_new,leg_labels_new,loc='upper left', ncol=1, bbox_to_anchor=(1, 1))
+        ax[0].set_xlim([hist_dict[ivar]['data']['nominal'].hist.axes[0].edges[0],hist_dict[ivar]['data']['nominal'].hist.axes[0].edges[-1]])
+        x_label = ax[0].get_xlabel()
+        ax[0].set_xlabel('', ha='right', x=1.0)
+        ax[0].set_ylabel("Events/bin",loc='top')
+        # ax[0].set_ylim(top=ax[0].get_ylim()[1]*1000) # minor stick will not be draw if the y-range is very large
+        # an additional way to make reasonable y-axis
+        ax[0].axhline(y=ax[0].get_ylim()[1]*1000, color='black', linestyle='--', linewidth=1, alpha=0)
+        ax[0].set_yscale('log')
+        # https://stackoverflow.com/questions/44078409/matplotlib-semi-log-plot-minor-tick-marks-are-gone-when-range-is-large
+        locmin = tik.LogLocator(base=10.0,subs=(0.2,0.4,0.6,0.8),numticks=64)
+        ax[0].yaxis.set_minor_locator(locmin)
+        ax[0].yaxis.set_minor_formatter(tik.NullFormatter())
+        ax[0].legend(ncol=3,loc='upper left')
+        ax[1].set_xlabel(x_label, ha='right', x=1.0)
+        # yticks = ax[1].yaxis.get_major_ticks()
+        # yticks[0].label1.set_visible(False)
+        # yticks[-1].label1.set_visible(False)
+        plt.subplots_adjust(hspace=0.03)
+        hep.cms.label(label="Preliminary",loc=0,data=True,year='2018',ax=ax[0]) # Preliminary
+        plt.savefig(f"{cfg['out_plot']}/LOG_{cfg['channel']}_{cfg['year']}_{ivar}.pdf",bbox_inches='tight')
+
+
+    for ivar in hist_dict:
+        f, ax = plt.subplots(2,1,figsize=(5,5),gridspec_kw={'height_ratios': [3.3,0.7]},sharex=True)
+        hist_list = []
+        label_list = []
+        color_list = []
+        for igp in hist_dict[ivar]:
+            if hist_dict[ivar][igp]['nominal'].data:
+                continue
+            hist_list.append(hist_dict[ivar][igp]['nominal'].hist)
+            label_list.append(hist_dict[ivar][igp]['nominal'].label)
+            color_list.append(hist_dict[ivar][igp]['nominal'].color)
+        zipped = zip(hist_list, label_list, color_list)
+        resort_zipped = sorted(zipped, key=lambda x: x[0].sum().value, reverse=True)
+        hist_tuple, label_tuple, color_tuple = zip(*resort_zipped)
+        hep.histplot(list(hist_tuple), histtype='fill', stack=True, label=list(label_tuple), color=list(color_tuple), ax=ax[0])
+        hep.histplot(hist_dict[ivar]['data']['nominal'].hist, histtype='errorbar', stack=False, label=hist_dict[ivar]['data']['nominal'].label, color=hist_dict[ivar]['data']['nominal'].color, ax=ax[0], marker='o', markersize=2,elinewidth=1)
+        # ax.legend(leg_handles_new,leg_labels_new,loc='upper left', ncol=1, bbox_to_anchor=(1, 1))
+        ax[0].set_xlim([hist_dict[ivar]['data']['nominal'].hist.axes[0].edges[0],hist_dict[ivar]['data']['nominal'].hist.axes[0].edges[-1]])
+        x_label = ax[0].get_xlabel()
+        ax[0].set_xlabel('', ha='right', x=1.0)
+        ax[0].set_ylabel("Events/bin",loc='top')
+        # set y-axis limits
+        ax[0].set_ylim([0.00001,ax[0].get_ylim()[1]*1.4])
+        ax[0].legend(ncol=3,loc='upper left')
+        ax[1].set_xlabel(x_label, ha='right', x=1.0)
+        # yticks = ax[1].yaxis.get_major_ticks()
+        # yticks[0].label1.set_visible(False)
+        # yticks[-1].label1.set_visible(False)
+        plt.subplots_adjust(hspace=0.03)
+        hep.cms.label(label="Preliminary",loc=0,data=True,year='2018',ax=ax[0]) # Preliminary
+        plt.savefig(f"{cfg['out_plot']}/ORI_{cfg['channel']}_{cfg['year']}_{ivar}.pdf",bbox_inches='tight')
+
+    tic = time.monotonic()
+    logger.info(
+    """
+================================
+ Plotting cost time: %s s
+ Please find the plots here: %s
+================================
+    """,
+    np.round(tic - toc,4),
+    cfg['out_plot'],
+    )
+    return
+
+def get_plot(cfg):
+
+    fhist_dict,group_dict = get_plot_cfg(cfg['plot_cfg'])
+    rlts = {}
+    for iyear in fhist_dict:
+        with open(fhist_dict[iyear], "rb") as f:
+            rlts[iyear] = pickle.load(f)
+
+    hist_dict = {}
+    for iyear in rlts:
+        if cfg['reorganize']:
+            hist_dict[iyear] = reorganize_hist(cfg,rlts[iyear],group_dict,output_file_name_reorganize)
+            output_file_name_reorganize = f"{cfg['out_hist']}/reorganize_results_{cfg['channel']}_{cfg['year']}.pkl"
+        else:
+            hist_dict[iyear] = rlts[iyear]
+
+    for iyear in hist_dict:
+        plotting(cfg,hist_dict[iyear])
